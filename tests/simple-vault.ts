@@ -81,7 +81,7 @@ describe('Simple Vault', () => {
       mint.toBuffer()
     ]);
 
-    const tokenAccount = await getAssociatedTokenAddress(
+    const vaultTokenAccount = await getAssociatedTokenAddress(
       mint,
       vaultAddress,
       true
@@ -93,7 +93,7 @@ describe('Simple Vault', () => {
       .initializeVault()
       .accounts({
         vault: vaultAddress,
-        tokenAccount: tokenAccount,
+        vaultTokenAccount,
         owner: primaryOwner.publicKey,
         mint: mint,
         authority: authority.publicKey
@@ -118,20 +118,20 @@ describe('Simple Vault', () => {
     // console.log('treasuryBalance', treasuryBalance);
 
     // const vaultTokenBalance = await anchorProvider.connection.getTokenAccountBalance(
-    //   tokenAccount
+    //   vaultTokenAccount
     // );
     //
     // console.log('vaultTokenBalance', vaultTokenBalance);
 
     // const tokenAccountInfo = await anchorProvider.connection.getAccountInfo(
-    //   tokenAccount
+    //   vaultTokenAccount
     // );
     //
     // console.log('tokenAccountInfo', tokenAccountInfo);
 
     const tokenAccountSplInfo = await getAccount(
       anchorProvider.connection,
-      tokenAccount
+      vaultTokenAccount
     );
 
     console.log('tokenAccountSplInfo', tokenAccountSplInfo);
@@ -150,7 +150,7 @@ describe('Simple Vault', () => {
       mint.toBuffer()
     ]);
 
-    const tokenAccount = await getAssociatedTokenAddress(
+    const vaultTokenAccount = await getAssociatedTokenAddress(
       mint,
       vaultAddress,
       true
@@ -164,7 +164,7 @@ describe('Simple Vault', () => {
     //   createTransferCheckedInstruction(
     //     treasury, // from
     //     mint, // mint
-    //     tokenAccount, // to
+    //     vaultTokenAccount, // to
     //     authority.publicKey, // authority
     //     adjustAmount(DEPOSIT_AMOUNT, DECIMALS), // amount
     //     DECIMALS // decimals
@@ -178,7 +178,7 @@ describe('Simple Vault', () => {
       .accounts({
         vault: vaultAddress,
         treasury,
-        tokenAccount,
+        vaultTokenAccount,
         owner: primaryOwner.publicKey,
         mint: mint,
         authority: authority.publicKey
@@ -198,9 +198,23 @@ describe('Simple Vault', () => {
     console.log('treasuryBalance - AFTER DEPOSIT', treasuryBalance);
 
     const vaultTokenBalance = await anchorProvider.connection.getTokenAccountBalance(
-      tokenAccount
+      vaultTokenAccount
     );
 
     console.log('vaultTokenBalance - AFTER DEPOSIT', vaultTokenBalance);
+  });
+
+  it('Withdraw', async () => {
+    const [vaultAddress, _vaultBump] = findPDA([
+      Buffer.from(VAULT_KEY),
+      primaryOwner.publicKey.toBuffer(),
+      mint.toBuffer()
+    ]);
+
+    const vaultTokenAccount = await getAssociatedTokenAddress(
+      mint,
+      vaultAddress,
+      true
+    );
   });
 });

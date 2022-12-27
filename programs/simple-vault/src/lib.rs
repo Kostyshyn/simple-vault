@@ -21,7 +21,7 @@ pub mod simple_vault {
         let clock: Clock = Clock::get().unwrap();
         let vault: &mut Account<Vault> = &mut ctx.accounts.vault;
 
-        vault.token_account = ctx.accounts.token_account.key();
+        vault.token_account = ctx.accounts.vault_token_account.key();
         vault.owner = ctx.accounts.owner.key();
         vault.mint = ctx.accounts.mint.key();
         vault.amount = 0;
@@ -39,7 +39,7 @@ pub mod simple_vault {
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_accounts = Transfer {
             from: ctx.accounts.treasury.to_account_info(),
-            to: ctx.accounts.token_account.to_account_info(),
+            to: ctx.accounts.vault_token_account.to_account_info(),
             authority: ctx.accounts.authority.to_account_info()
         };
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
@@ -47,7 +47,7 @@ pub mod simple_vault {
 
         let clock: Clock = Clock::get().unwrap();
         let vault: &mut Account<Vault> = &mut ctx.accounts.vault;
-        let token_account: &mut Account<TokenAccount> = &mut ctx.accounts.token_account;
+        let token_account: &mut Account<TokenAccount> = &mut ctx.accounts.vault_token_account;
         let current_amount = token_account.amount;
 
         // msg!("Token account {:#?}", ctx.accounts.token_account.clone());
@@ -63,7 +63,22 @@ pub mod simple_vault {
         Ok(())
     }
 
-    pub fn withdraw(_ctx: Context<Withdraw>) -> Result<()> {
+    pub fn withdraw(ctx: Context<Withdraw>, amount: u64) -> Result<()> {
+        // TODO: check here how to do it properly
+        // https://solana.stackexchange.com/a/4687/1646
+
+        let cpi_program = ctx.accounts.token_program.to_account_info();
+        let cpi_accounts = Transfer {
+            from: ctx.accounts.vault_token_account.to_account_info(),
+            to: ctx.accounts.owner_token_account.to_account_info(),
+            authority: ctx.accounts.vault.to_account_info()
+        };
+        let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
+        token::transfer(cpi_ctx, amount)?;
+
+        let clock: Clock = Clock::get().unwrap();
+        let vault: &mut Account<Vault> = &mut ctx.accounts.vault;
+
         Ok(())
     }
 }
@@ -89,9 +104,9 @@ pub struct InitializeVault<'info> {
         associated_token::authority = vault,
         payer = authority
     )]
-    pub token_account: Account<'info, TokenAccount>,
+    pub vault_token_account: Account<'info, TokenAccount>,
 
-    /// CHECK:
+    /// CHECK: none
     pub owner: AccountInfo<'info>,
 
     pub mint: Account<'info, Mint>,
@@ -113,6 +128,7 @@ pub struct InitializeVault<'info> {
 pub struct Deposit<'info> {
     #[account(
         mut,
+        has_one = owner,
         seeds = [
             VAULT_KEY.as_ref(),
             owner.key().as_ref(),
@@ -130,9 +146,9 @@ pub struct Deposit<'info> {
         associated_token::mint = mint,
         associated_token::authority = vault
     )]
-    pub token_account: Account<'info, TokenAccount>,
+    pub vault_token_account: Account<'info, TokenAccount>,
 
-    /// CHECK:
+    /// CHECK: none
     pub owner: AccountInfo<'info>,
 
     pub mint: Account<'info, Mint>,
@@ -148,7 +164,46 @@ pub struct Deposit<'info> {
 #[derive(Accounts)]
 #[instruction(amount: u64)]
 pub struct Withdraw<'info> {
+    #[account(
+        mut,
+        has_one = owner,
+        seeds = [
+            VAULT_KEY.as_ref(),
+            owner.key().as_ref(),
+            mint.key().as_ref()
+        ],
+        bump
+    )]
+    pub vault: Account<'info, Vault>,
+
+    #[account(
+        mut,
+        associated_token::mint = mint,
+        associated_token::authority = vault
+    )]
+    pub vault_token_account: Account<'info, TokenAccount>,
+
+    #[account(
+        init,
+        has_one = owner,
+        associated_token::mint = mint,
+        associated_token::authority = owner,
+        payer = owner
+    )]
+    pub owner_token_account: Account<'info, TokenAccount>,
+
+    pub mint: Account<'info, Mint>,
+
+    #[account(mut)]
+    pub owner: Signer<'info>,
+
     pub system_program: Program<'info, System>,
+
+    pub token_program: Program<'info, Token>,
+
+    pub associated_token_program: Program<'info, AssociatedToken>,
+
+    pub rent: Sysvar<'info, Rent>
 }
 
 #[account]
