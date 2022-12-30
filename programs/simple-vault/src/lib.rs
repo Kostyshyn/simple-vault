@@ -125,6 +125,20 @@ pub mod simple_vault {
 
         Ok(())
     }
+
+    pub fn unlock(ctx: Context<Unlock>) -> Result<()> {
+        let vault: &mut Account<Vault> = &mut ctx.accounts.vault;
+
+        if !vault.locked {
+            return Err(ErrorCode::UnlockedVault.into());
+        }
+
+        vault.locked = false;
+
+        msg!("Vault {:#?}", vault.clone());
+
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -290,12 +304,28 @@ pub struct Lock<'info> {
     )]
     pub vault: Account<'info, Vault>,
 
+    /// CHECK: none
+    pub owner: AccountInfo<'info>,
+
+    pub mint: Account<'info, Mint>,
+
+    #[account(mut)]
+    pub authority: Signer<'info>
+}
+
+#[derive(Accounts)]
+pub struct Unlock<'info> {
     #[account(
         mut,
-        associated_token::mint = mint,
-        associated_token::authority = vault
+        has_one = owner,
+        seeds = [
+            VAULT_KEY.as_ref(),
+            owner.key().as_ref(),
+            mint.key().as_ref()
+        ],
+        bump
     )]
-    pub vault_token_account: Account<'info, TokenAccount>,
+    pub vault: Account<'info, Vault>,
 
     /// CHECK: none
     pub owner: AccountInfo<'info>,
@@ -335,5 +365,7 @@ impl Vault {
 #[error_code]
 pub enum ErrorCode {
     #[msg("Vault is locked")]
-    LockedVault
+    LockedVault,
+    #[msg("Vault is not locked")]
+    UnlockedVault
 }

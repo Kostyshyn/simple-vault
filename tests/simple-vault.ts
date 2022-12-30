@@ -231,7 +231,20 @@ describe('Simple Vault', () => {
     //   .lock()
     //   .accounts({
     //     vault: vaultAddress,
-    //     vaultTokenAccount,
+    //     owner: primaryOwner.publicKey,
+    //     mint,
+    //     authority: authority.publicKey
+    //   })
+    //   .preInstructions([])
+    //   .signers([authority])
+    //   .rpc();
+
+    // Try to unlock vault
+
+    // await program.methods
+    //   .unlock()
+    //   .accounts({
+    //     vault: vaultAddress,
     //     owner: primaryOwner.publicKey,
     //     mint,
     //     authority: authority.publicKey
