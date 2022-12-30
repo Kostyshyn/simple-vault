@@ -95,7 +95,7 @@ describe('Simple Vault', () => {
         vault: vaultAddress,
         vaultTokenAccount,
         owner: primaryOwner.publicKey,
-        mint: mint,
+        mint,
         authority: authority.publicKey
       })
       .preInstructions([])
@@ -180,7 +180,7 @@ describe('Simple Vault', () => {
         treasury,
         vaultTokenAccount,
         owner: primaryOwner.publicKey,
-        mint: mint,
+        mint,
         authority: authority.publicKey
       })
       .preInstructions([])
@@ -205,7 +205,7 @@ describe('Simple Vault', () => {
   });
 
   it('Withdraw', async () => {
-    const [vaultAddress, _vaultBump] = findPDA([
+    const [vaultAddress, vaultBump] = findPDA([
       Buffer.from(VAULT_KEY),
       primaryOwner.publicKey.toBuffer(),
       mint.toBuffer()
@@ -216,5 +216,57 @@ describe('Simple Vault', () => {
       vaultAddress,
       true
     );
+
+    const ownerTokenAccount = await getAssociatedTokenAddress(
+      mint,
+      primaryOwner.publicKey
+    );
+
+    const WITHDRAW_AMOUNT = 25;
+    const amount = new anchor.BN(adjustAmount(WITHDRAW_AMOUNT, DECIMALS));
+
+    // Try to lock vault
+
+    // await program.methods
+    //   .lock()
+    //   .accounts({
+    //     vault: vaultAddress,
+    //     vaultTokenAccount,
+    //     owner: primaryOwner.publicKey,
+    //     mint,
+    //     authority: authority.publicKey
+    //   })
+    //   .preInstructions([])
+    //   .signers([authority])
+    //   .rpc();
+
+    await program.methods
+      .withdraw(amount, vaultBump)
+      .accounts({
+        vault: vaultAddress,
+        vaultTokenAccount,
+        ownerTokenAccount,
+        owner: primaryOwner.publicKey,
+        mint
+      })
+      .preInstructions([])
+      .signers([primaryOwner])
+      .rpc();
+
+    const vaultAccount = await program.account.vault.fetch(vaultAddress);
+
+    console.log('vaultAccount - AFTER WITHDRAWAL', vaultAccount);
+
+    const ownerBalance = await anchorProvider.connection.getTokenAccountBalance(
+      ownerTokenAccount
+    );
+
+    console.log('ownerBalance - AFTER WITHDRAWAL', ownerBalance);
+
+    const vaultTokenBalance = await anchorProvider.connection.getTokenAccountBalance(
+      vaultTokenAccount
+    );
+
+    console.log('vaultTokenBalance - AFTER WITHDRAWAL', vaultTokenBalance);
   });
 });
