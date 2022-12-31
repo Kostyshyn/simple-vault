@@ -12,7 +12,7 @@ import {
 import { before } from 'mocha';
 import { expect } from 'chai';
 import { VAULT_SIZE, VAULT_KEY, DECIMALS, INITIAL_SUPPLY } from './constants';
-import { adjustAmount, createAndMintToken, findPDAForProgram } from './utils';
+import { adjustAmount, createAndMintToken, findPDAForProgram, getVaultsByOwner } from './utils';
 import {
   getAssociatedTokenAddress,
   getAccount,
@@ -265,5 +265,7 @@ describe('Simple Vault', async () => {
     );
 
     console.log('vaultTokenBalance - AFTER WITHDRAWAL', vaultTokenBalance);
+
+    await getVaultsByOwner(program, primaryOwner.publicKey);
   });
 });

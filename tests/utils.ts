@@ -8,6 +8,9 @@ import {
 } from '@solana/spl-token';
 import { Buffer } from 'buffer';
 import Decimal from 'decimal.js';
+import { Vault } from './types';
+import { Program } from '@project-serum/anchor';
+import { SimpleVault } from '../target/types/simple_vault';
 
 export const findPDAForProgram = (programId: PublicKey) => (seeds: Array<Buffer | Uint8Array>): [PublicKey, number] => {
   return PublicKey.findProgramAddressSync(
@@ -72,5 +75,25 @@ export const createAndMintToken = async (
   );
 
   return [mintAddress, tokenAccount.address];
+};
+
+export const getVaultsByOwner = async (
+  program: Program<SimpleVault>,
+  owner: PublicKey
+): Promise<Vault[]> => {
+  const filter = [
+    {
+      memcmp: {
+        offset: 8 + // Discriminator
+                32, // Token account
+        bytes: owner.toBase58(),
+      },
+    },
+  ];
+
+  const vaults = await program.account.vault.all(filter);
+
+  console.log(vaults);
+  return [];
 };
 
