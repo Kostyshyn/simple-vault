@@ -28,14 +28,16 @@ pub mod simple_vault {
         vault.locked = false;
         vault.created_at = clock.unix_timestamp;
 
-        msg!("Vault {:#?}", vault.clone());
-        // msg!("LEN of Vault {}", Vault::SIZE);
-        // msg!("Size of Vault {}", std::mem::size_of::<Vault>());
+        msg!("Initialize vault {:#?}", vault.clone());
 
         Ok(())
     }
 
     pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
+        if amount <= 0 {
+            return Err(ErrorCode::InvalidAmount.into());
+        }
+
         // let cpi_program = ctx.accounts.token_program.to_account_info();
         // let cpi_accounts = Transfer {
         //     from: ctx.accounts.treasury.to_account_info(),
@@ -52,29 +54,36 @@ pub mod simple_vault {
         let token_account: &mut Account<TokenAccount> = &mut ctx.accounts.vault_token_account;
         let current_amount = token_account.amount;
 
-        // msg!("Token account {:#?}", ctx.accounts.token_account.clone());
+        msg!("Deposit to vault {}", vault.key());
         msg!("Current amount {}", current_amount);
         msg!("Deposit amount {}", amount);
 
-        // vault.locked = true;
         vault.amount = current_amount + amount;
         vault.last_deposit = clock.unix_timestamp;
-
-        msg!("Vault {:#?}", vault.clone());
 
         Ok(())
     }
 
     pub fn withdraw(ctx: Context<Withdraw>, amount: u64, vault_bump: u8) -> Result<()> {
-        // TODO: check here how to do it properly
-        // https://solana.stackexchange.com/a/4687/1646
-
         if ctx.accounts.vault.locked {
             return Err(ErrorCode::LockedVault.into());
         }
 
+        if amount <= 0 {
+            return Err(ErrorCode::InvalidAmount.into());
+        }
+
+        let token_account: &Account<TokenAccount> = &ctx.accounts.vault_token_account;
+        let current_amount = token_account.amount;
+
+        if amount > current_amount {
+            return Err(ErrorCode::InsufficientFunds.into());
+        }
+
         let owner = ctx.accounts.owner.key();
         let mint = ctx.accounts.mint.key();
+
+        // https://solana.stackexchange.com/questions/4685/withdraw-nft-from-pda-tokenaccount-anchor-lang/4687#4687
 
         let seeds = &[
             VAULT_KEY.as_ref(),
@@ -97,17 +106,13 @@ pub mod simple_vault {
 
         let vault: &mut Account<Vault> = &mut ctx.accounts.vault;
         let clock: Clock = Clock::get().unwrap();
-        let token_account: &mut Account<TokenAccount> = &mut ctx.accounts.vault_token_account;
-        let current_amount = token_account.amount;
 
-        // msg!("Token account {:#?}", ctx.accounts.token_account.clone());
+        msg!("Withdraw from vault {}", vault.key());
         msg!("Current amount {}", current_amount);
         msg!("Withdraw amount {}", amount);
 
         vault.amount = current_amount - amount;
         vault.last_withdrawal = clock.unix_timestamp;
-
-        msg!("Vault {:#?}", vault.clone());
 
         Ok(())
     }
@@ -121,7 +126,7 @@ pub mod simple_vault {
 
         vault.locked = true;
 
-        msg!("Vault {:#?}", vault.clone());
+        msg!("Lock vault {}", vault.key());
 
         Ok(())
     }
@@ -135,7 +140,7 @@ pub mod simple_vault {
 
         vault.locked = false;
 
-        msg!("Vault {:#?}", vault.clone());
+        msg!("Unlock vault {}", vault.key());
 
         Ok(())
     }
@@ -364,6 +369,10 @@ impl Vault {
 
 #[error_code]
 pub enum ErrorCode {
+    #[msg("Invalid amount")]
+    InvalidAmount,
+    #[msg("Insufficient funds")]
+    InsufficientFunds,
     #[msg("Vault is locked")]
     LockedVault,
     #[msg("Vault is not locked")]

@@ -32,7 +32,7 @@ const getAirdrop = async (
   await connection.confirmTransaction(signature, 'confirmed');
 };
 
-describe('Simple Vault', () => {
+describe('Simple Vault', async () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
@@ -48,8 +48,17 @@ describe('Simple Vault', () => {
 
   const findPDA = findPDAForProgram(program.programId);
 
+  // SPL token
   let mint: PublicKey;
   let treasury: PublicKey;
+
+  // Primary owner vault
+  let vaultAddress: PublicKey;
+  let vaultTokenAccount: PublicKey;
+  let vaultBump: number;
+
+  const DEPOSIT_AMOUNT = 100;
+  const WITHDRAW_AMOUNT = 25;
 
   before(async () => {
     await Promise.all([
@@ -71,24 +80,25 @@ describe('Simple Vault', () => {
     mint = _mint;
     treasury = _treasury;
 
-    // const vaultAccountMaxRent = await anchorProvider.connection.getMinimumBalanceForRentExemption(VAULT_SIZE);
-  });
-
-  it('Initialize vault', async () => {
-    const [vaultAddress, _vaultBump] = findPDA([
+    const [_vaultAddress, _vaultBump] = findPDA([
       Buffer.from(VAULT_KEY),
       primaryOwner.publicKey.toBuffer(),
       mint.toBuffer()
     ]);
 
-    const vaultTokenAccount = await getAssociatedTokenAddress(
+    vaultAddress = _vaultAddress;
+    vaultBump = _vaultBump;
+
+    vaultTokenAccount = await getAssociatedTokenAddress(
       mint,
       vaultAddress,
       true
     );
 
-    // console.log('tokenAccount', tokenAccount)
+    // const vaultAccountMaxRent = await anchorProvider.connection.getMinimumBalanceForRentExemption(VAULT_SIZE);
+  });
 
+  it('Initialize vault', async () => {
     await program.methods
       .initializeVault()
       .accounts({
@@ -144,19 +154,6 @@ describe('Simple Vault', () => {
   });
 
   it('Deposit', async () => {
-    const [vaultAddress, _vaultBump] = findPDA([
-      Buffer.from(VAULT_KEY),
-      primaryOwner.publicKey.toBuffer(),
-      mint.toBuffer()
-    ]);
-
-    const vaultTokenAccount = await getAssociatedTokenAddress(
-      mint,
-      vaultAddress,
-      true
-    );
-
-    const DEPOSIT_AMOUNT = 100;
     const amount = new anchor.BN(adjustAmount(DEPOSIT_AMOUNT, DECIMALS));
 
     // let tx = new Transaction();
@@ -205,24 +202,11 @@ describe('Simple Vault', () => {
   });
 
   it('Withdraw', async () => {
-    const [vaultAddress, vaultBump] = findPDA([
-      Buffer.from(VAULT_KEY),
-      primaryOwner.publicKey.toBuffer(),
-      mint.toBuffer()
-    ]);
-
-    const vaultTokenAccount = await getAssociatedTokenAddress(
-      mint,
-      vaultAddress,
-      true
-    );
-
     const ownerTokenAccount = await getAssociatedTokenAddress(
       mint,
       primaryOwner.publicKey
     );
 
-    const WITHDRAW_AMOUNT = 25;
     const amount = new anchor.BN(adjustAmount(WITHDRAW_AMOUNT, DECIMALS));
 
     // Try to lock vault
