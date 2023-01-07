@@ -348,6 +348,7 @@ pub struct Vault {
     pub owner: Pubkey,
     pub mint: Pubkey,
     pub amount: u64,
+    // TODO: make lock period 'locked_before: i64'
     pub locked: bool,
     pub last_deposit: i64,
     pub last_withdrawal: i64,

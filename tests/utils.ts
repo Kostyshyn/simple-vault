@@ -86,9 +86,9 @@ export const getVaultsByOwner = async (
       memcmp: {
         offset: 8 + // Discriminator
                 32, // Token account
-        bytes: owner.toBase58(),
-      },
-    },
+        bytes: owner.toBase58()
+      }
+    }
   ];
 
   const vaults = await program.account.vault.all(filter);

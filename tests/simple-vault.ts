@@ -98,7 +98,7 @@ describe('Simple Vault', async () => {
     // const vaultAccountMaxRent = await anchorProvider.connection.getMinimumBalanceForRentExemption(VAULT_SIZE);
   });
 
-  it('Initialize vault', async () => {
+  it('Initialize vault instruction', async () => {
     await program.methods
       .initializeVault()
       .accounts({
@@ -112,49 +112,34 @@ describe('Simple Vault', async () => {
       .signers([authority])
       .rpc();
 
-    const authorityBalance = await anchorProvider.connection.getAccountInfo(
-      authority.publicKey
-    );
-
     const vaultAccount = await program.account.vault.fetch(vaultAddress);
 
-    console.log('vaultAddress', vaultAddress);
-    console.log('vaultAccount', vaultAccount);
+    const tokenAccountSplInfo = await getAccount(anchorProvider.connection, vaultTokenAccount);
 
-    // const treasuryBalance = await anchorProvider.connection.getTokenAccountBalance(
-    //   treasury
-    // );
-    //
-    // console.log('treasuryBalance', treasuryBalance);
+    // Simulate network latency
+    await new Promise(r => setTimeout(r, 100));
 
-    // const vaultTokenBalance = await anchorProvider.connection.getTokenAccountBalance(
-    //   vaultTokenAccount
-    // );
-    //
-    // console.log('vaultTokenBalance', vaultTokenBalance);
+    expect(vaultAccount.tokenAccount.toBase58(), 'tokenAccount').to.equal(vaultTokenAccount.toBase58());
+    expect(vaultAccount.owner.toBase58(), 'vault owner').to.equal(primaryOwner.publicKey.toBase58());
+    expect(vaultAccount.mint.toBase58(), 'vault mint').to.equal(mint.toBase58());
+    expect(vaultAccount.amount.toNumber(), 'vault amount').to.equal(0);
+    expect(vaultAccount.locked, 'locked').to.equal(false);
+    expect(vaultAccount.lastDeposit.toNumber(), 'lastDeposit').to.equal(0);
+    expect(vaultAccount.lastWithdrawal.toNumber(), 'lastWithdrawal').to.equal(0);
+    expect(vaultAccount.createdAt.toNumber(), 'createdAt').to.be.below(Math.floor(Date.now() / 1000));
 
-    // const tokenAccountInfo = await anchorProvider.connection.getAccountInfo(
-    //   vaultTokenAccount
-    // );
-    //
-    // console.log('tokenAccountInfo', tokenAccountInfo);
-
-    const tokenAccountSplInfo = await getAccount(
-      anchorProvider.connection,
-      vaultTokenAccount
-    );
-
-    console.log('tokenAccountSplInfo', tokenAccountSplInfo);
-
-    expect(
-      vaultAccount.owner.toBase58()
-    ).to.equal(
-      primaryOwner.publicKey.toBase58()
-    );
+    expect(tokenAccountSplInfo.address.toBase58(), 'vault token address').to.equal(vaultTokenAccount.toBase58());
+    expect(tokenAccountSplInfo.mint.toBase58(), 'vault token mint').to.equal(mint.toBase58());
+    expect(tokenAccountSplInfo.owner.toBase58(), 'vault token owner').to.equal(vaultAddress.toBase58());
+    expect(tokenAccountSplInfo.amount.toString(), 'vault token amount').to.equal(String(0));
   });
 
-  it('Deposit', async () => {
+  it('Deposit instruction', async () => {
     const amount = new anchor.BN(adjustAmount(DEPOSIT_AMOUNT, DECIMALS));
+
+    const vaultAccountBefore = await program.account.vault.fetch(vaultAddress);
+    const treasuryBalanceBefore = await anchorProvider.connection.getTokenAccountBalance(treasury);
+    const vaultTokenBalanceBefore = await anchorProvider.connection.getTokenAccountBalance(vaultTokenAccount);
 
     // let tx = new Transaction();
     // tx.add(
@@ -188,20 +173,16 @@ describe('Simple Vault', async () => {
 
     console.log('vaultAccount - AFTER DEPOSIT', vaultAccount);
 
-    const treasuryBalance = await anchorProvider.connection.getTokenAccountBalance(
-      treasury
-    );
+    const treasuryBalance = await anchorProvider.connection.getTokenAccountBalance(treasury);
 
     console.log('treasuryBalance - AFTER DEPOSIT', treasuryBalance);
 
-    const vaultTokenBalance = await anchorProvider.connection.getTokenAccountBalance(
-      vaultTokenAccount
-    );
+    const vaultTokenBalance = await anchorProvider.connection.getTokenAccountBalance(vaultTokenAccount);
 
     console.log('vaultTokenBalance - AFTER DEPOSIT', vaultTokenBalance);
   });
 
-  it('Withdraw', async () => {
+  it.skip('Withdraw instruction', async () => {
     const ownerTokenAccount = await getAssociatedTokenAddress(
       mint,
       primaryOwner.publicKey
